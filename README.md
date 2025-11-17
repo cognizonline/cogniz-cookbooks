@@ -55,20 +55,20 @@ export OPENAI_API_KEY="your_openai_api_key"
 ## Quick Start
 
 ```python
-from cogniz import CognizClient
+from cogniz import Client
 
 # Initialize client
-client = CognizClient(api_key="your_api_key")
+client = Client(api_key="your_api_key", project_id="default")
 
 # Store memory
-client.memory.add(
+client.store(
     content="User prefers dark mode and speaks Spanish",
     user_id="user_123",
-    tags=["preferences"]
+    metadata={"tags": ["preferences"]}
 )
 
 # Retrieve relevant memories
-memories = client.memory.search(
+memories = client.search(
     query="What are the user's preferences?",
     user_id="user_123"
 )
@@ -101,14 +101,14 @@ response = assistant.chat("Hello!")
 
 ```python
 # 1. Retrieve relevant context
-memories = client.memory.search(query, user_id=user_id)
+memories = client.search(query, user_id=user_id)
 
 # 2. Enhance LLM prompt with context
 context = "\n".join([m['content'] for m in memories])
 response = llm.generate(f"Context: {context}\n\nUser: {query}")
 
 # 3. Store new interaction
-client.memory.add(
+client.store(
     content=f"User asked about {topic}",
     user_id=user_id
 )
@@ -118,14 +118,14 @@ client.memory.add(
 
 ```python
 # Agent 1 stores findings
-client.memory.add(
+client.store(
     content="Research findings on topic X",
     user_id="project_123",
-    tags=["research"]
+    metadata={"tags": ["research"]}
 )
 
 # Agent 2 retrieves and uses
-memories = client.memory.search(
+memories = client.search(
     query="topic X research",
     user_id="project_123"
 )
@@ -136,7 +136,7 @@ memories = client.memory.search(
 ```python
 # Combine traditional RAG with user memory
 rag_results = vector_db.search(query)
-memory_context = client.memory.search(query, user_id=user_id)
+memory_context = client.search(query, user_id=user_id)
 combined_context = rag_results + memory_context
 ```
 
@@ -200,14 +200,14 @@ combined_context = rag_results + memory_context
 
 ```python
 from fastapi import FastAPI
-from cogniz import CognizClient
+from cogniz import Client
 
 app = FastAPI()
-client = CognizClient(api_key="your_key")
+client = Client(api_key="your_key", project_id="default")
 
 @app.post("/chat")
 async def chat(message: str, user_id: str):
-    memories = client.memory.search(message, user_id=user_id)
+    memories = client.search(message, user_id=user_id)
     # Process with your LLM
     return {"response": response}
 ```
@@ -227,13 +227,13 @@ chain.run("What did we discuss yesterday?")
 
 ```python
 import streamlit as st
-from cogniz import CognizClient
+from cogniz import Client
 
-client = CognizClient(api_key=st.secrets["COGNIZ_API_KEY"])
+client = Client(api_key=st.secrets["COGNIZ_API_KEY"], project_id="default")
 
 user_input = st.text_input("Message:")
 if user_input:
-    memories = client.memory.search(user_input, user_id=st.session_state.user_id)
+    memories = client.search(user_input, user_id=st.session_state.user_id)
     # Display context-aware response
 ```
 
@@ -275,7 +275,7 @@ Prerequisites:
 - other-package>=version
 """
 
-from cogniz import CognizClient
+from cogniz import Client
 
 def main():
     # Your implementation

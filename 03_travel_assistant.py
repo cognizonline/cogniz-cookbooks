@@ -23,7 +23,7 @@ Setup:
     export OPENAI_API_KEY="your_openai_key_here"
 """
 
-from cogniz import CognizClient
+from cogniz import Client
 from openai import OpenAI
 import os
 from typing import Optional, List, Dict
@@ -47,8 +47,7 @@ class TravelAssistant:
         openai_api_key: Optional[str] = None
     ):
         self.user_id = user_id
-        self.cogniz = CognizClient(
-            api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY")
+        self.cogniz = Client(api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY", project_id="default")
         )
         self.openai = OpenAI(
             api_key=openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -64,7 +63,7 @@ class TravelAssistant:
 
         # Retrieve travel preferences
         print(" Retrieving your travel profile...")
-        preferences = self.cogniz.memory.search(
+        preferences = self.cogniz.search(
             query="travel preferences accommodation budget activities",
             user_id=self.user_id,
             limit=10
@@ -73,10 +72,10 @@ class TravelAssistant:
         print(f" Found {len(preferences)} preferences")
 
         # Get past trips for context
-        past_trips = self.cogniz.memory.search(
+        past_trips = self.cogniz.search(
             query=f"visited {destination} past trips",
             user_id=self.user_id,
-            tags=["trip"],
+            metadata={"tags": ["trip"]},
             limit=5
         )
 
@@ -99,10 +98,10 @@ class TravelAssistant:
         """Store travel preference."""
         print(f" Storing preference: {preference}")
 
-        self.cogniz.memory.add(
+        self.cogniz.store(
             content=preference,
             user_id=self.user_id,
-            tags=["preference", "travel"]
+            metadata={"tags": ["preference", "travel"]}
         )
 
         print(" Preference saved\n")
@@ -111,10 +110,10 @@ class TravelAssistant:
         """Record completed trip experience."""
         print(f" Recording trip to {destination}")
 
-        self.cogniz.memory.add(
+        self.cogniz.store(
             content=f"Visited {destination}. Experience: {experience}",
             user_id=self.user_id,
-            tags=["trip", "visited", destination.lower()]
+            metadata={"tags": ["trip", "visited", destination.lower()]}
         )
 
         print(" Trip recorded\n")
@@ -124,7 +123,7 @@ class TravelAssistant:
         print(f" Searching recommendations for: {query}")
 
         # Get user preferences
-        preferences = self.cogniz.memory.search(
+        preferences = self.cogniz.search(
             query=query,
             user_id=self.user_id,
             limit=5
@@ -213,10 +212,10 @@ class TravelAssistant:
 
     def _store_trip(self, destination: str, duration: str, itinerary: str):
         """Store planned trip in memory."""
-        self.cogniz.memory.add(
+        self.cogniz.store(
             content=f"Planned {duration} trip to {destination}",
             user_id=self.user_id,
-            tags=["trip", "planned", destination.lower()],
+            metadata={"tags": ["trip", "planned", destination.lower()]},
             metadata={"destination": destination, "duration": duration}
         )
 
@@ -366,7 +365,7 @@ if __name__ == "__main__":
 ```python
 def search_flights(self, origin: str, destination: str, dates: str):
     # Get user preferences
-    prefs = self.cogniz.memory.search(
+    prefs = self.cogniz.search(
         query="flight preferences airline class",
         user_id=self.user_id
     )
@@ -385,18 +384,18 @@ def search_flights(self, origin: str, destination: str, dates: str):
 ### 2. Budget Tracking
 ```python
 def track_budget(self, trip_id: str, expense: dict):
-    self.cogniz.memory.add(
+    self.cogniz.store(
         content=f"Spent ${expense['amount']} on {expense['category']}",
         user_id=self.user_id,
-        tags=["expense", trip_id],
+        metadata={"tags": ["expense", trip_id]},
         metadata=expense
     )
 
 def get_trip_expenses(self, trip_id: str):
-    expenses = self.cogniz.memory.search(
+    expenses = self.cogniz.search(
         query="expenses",
         user_id=self.user_id,
-        tags=[trip_id]
+        metadata={"tags": [trip_id]}
     )
 
     total = sum(float(e['metadata']['amount']) for e in expenses)
@@ -409,7 +408,7 @@ def plan_group_trip(self, destination: str, traveler_ids: List[str]):
     # Get preferences for all travelers
     all_preferences = []
     for traveler_id in traveler_ids:
-        prefs = self.cogniz.memory.search(
+        prefs = self.cogniz.search(
             query="travel preferences",
             user_id=traveler_id
         )
@@ -426,7 +425,7 @@ def plan_group_trip(self, destination: str, traveler_ids: List[str]):
 ```python
 def get_travel_alerts(self, destination: str):
     # Check memory for past issues
-    past_issues = self.cogniz.memory.search(
+    past_issues = self.cogniz.search(
         query=f"{destination} problems issues weather",
         user_id=self.user_id
     )
@@ -449,10 +448,10 @@ def store_trip_photos(self, trip_id: str, photos: List[str]):
         analysis = vision_api.analyze(photo_url)
 
         # Store photo memory
-        self.cogniz.memory.add(
+        self.cogniz.store(
             content=f"Photo from {analysis['location']}: {analysis['description']}",
             user_id=self.user_id,
-            tags=["photo", trip_id, analysis['location']],
+            metadata={"tags": ["photo", trip_id, analysis['location']}],
             metadata={"url": photo_url, "analysis": analysis}
         )
 ```
@@ -461,7 +460,7 @@ def store_trip_photos(self, trip_id: str, photos: List[str]):
 ```python
 def get_local_tips(self, destination: str):
     # Check if user has been there
-    past_visit = self.cogniz.memory.search(
+    past_visit = self.cogniz.search(
         query=f"visited {destination}",
         user_id=self.user_id
     )
@@ -481,7 +480,7 @@ def get_local_tips(self, destination: str):
 ```python
 def search_accommodations(self, destination: str, dates: str):
     # Get accommodation preferences
-    prefs = self.cogniz.memory.search(
+    prefs = self.cogniz.search(
         query="accommodation hotel hostel airbnb preferences",
         user_id=self.user_id
     )
@@ -513,10 +512,10 @@ def create_map_itinerary(self, destination: str, itinerary: str):
     )
 
     # Store map in memory
-    self.cogniz.memory.add(
+    self.cogniz.store(
         content=f"Map for {destination}: {map_url}",
         user_id=self.user_id,
-        tags=["map", destination]
+        metadata={"tags": ["map", destination]}
     )
 
     return map_url

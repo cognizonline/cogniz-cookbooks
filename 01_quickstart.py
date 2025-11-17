@@ -15,11 +15,15 @@ Setup:
     export COGNIZ_API_KEY="your_api_key_here"
 """
 
-from cogniz import CognizClient
+from cogniz import Client
 import os
 
 # Initialize Cogniz client
-client = CognizClient(api_key=os.getenv("COGNIZ_API_KEY"))
+# Note: You need a project_id. Use "default" or create a custom project
+client = Client(
+    api_key=os.getenv("COGNIZ_API_KEY"),
+    project_id="default"  # Use your project ID here
+)
 
 
 def step_1_store_user_info():
@@ -31,10 +35,10 @@ def step_1_store_user_info():
     print("=" * 60)
 
     # Store user preferences and information
-    result = client.memory.add(
+    result = client.store(
         content="Sarah prefers dark mode, speaks Spanish, and works in healthcare",
         user_id="sarah_123",
-        tags=["preferences", "profile"]
+        metadata={"tags": ["preferences", "profile"]}
     )
 
     print(f"[SUCCESS] Memory stored successfully!")
@@ -51,15 +55,19 @@ def step_2_retrieve_memories():
     print("=" * 60)
 
     # Search for relevant information
-    memories = client.memory.search(
+    search_result = client.search(
         query="What language does the user speak?",
         user_id="sarah_123",
         limit=5
     )
 
+    # Extract results from the response
+    memories = search_result.get('results', [])
+
     print(f"[SUCCESS] Found {len(memories)} relevant memories:")
     for i, memory in enumerate(memories, 1):
-        print(f"\n   {i}. {memory['content']}")
+        content = memory.get('content', str(memory))
+        print(f"\n   {i}. {content}")
 
     print()
     return memories
@@ -76,16 +84,20 @@ def step_3_build_ai_response():
     user_question = "Can you help me with HIPAA compliance?"
 
     # Get relevant context from memory
-    memories = client.memory.search(
+    search_result = client.search(
         query=user_question,
         user_id="sarah_123",
         limit=3
     )
 
+    # Extract results from search response
+    memories = search_result.get('results', [])
+
     # Build context for your LLM
     context = "User context:\n"
     for memory in memories:
-        context += f"- {memory['content']}\n"
+        content = memory.get('content', str(memory))
+        context += f"- {content}\n"
 
     print(f"User question: {user_question}")
     print(f"Retrieved {len(memories)} relevant memories")
@@ -96,10 +108,10 @@ def step_3_build_ai_response():
     print()
 
     # Store this new interaction
-    client.memory.add(
+    client.store(
         content="User asked about HIPAA compliance in healthcare context",
         user_id="sarah_123",
-        tags=["questions", "compliance"]
+        metadata={"tags": ["questions", "compliance"]}
     )
 
     print("[SUCCESS] Interaction stored for future reference")
@@ -128,23 +140,31 @@ def complete_example():
         print(f"  User: {message}")
 
         # Retrieve relevant context
-        memories = client.memory.search(
+        search_result = client.search(
             query=message,
             user_id=user_id,
             limit=3
         )
 
+        # Extract results
+        memories = search_result.get('results', [])
+
         # Simple response logic
         if "name" in message.lower() and "again" in message.lower():
-            response = f"Your name is {memories[0]['content'].split()[3] if memories else 'unknown'}"
+            if memories:
+                content = memories[0].get('content', '')
+                name = content.split()[3] if len(content.split()) > 3 else 'unknown'
+                response = f"Your name is {name}"
+            else:
+                response = "I don't have that information yet"
         else:
             response = "I'll remember that!"
 
             # Store new information
-            client.memory.add(
+            client.store(
                 content=message,
                 user_id=user_id,
-                tags=["conversation"]
+                metadata={"tags": ["conversation"]}
             )
 
         print(f"  Bot: {response}")
@@ -192,8 +212,8 @@ def main():
     print("=" * 60)
     print()
     print("What you learned:")
-    print("  - How to store memories with client.memory.add()")
-    print("  - How to retrieve memories with client.memory.search()")
+    print("  - How to store memories with client.store()")
+    print("  - How to retrieve memories with client.search()")
     print("  - How to build personalized AI responses")
     print()
     print("Next steps:")
@@ -221,8 +241,9 @@ from openai import OpenAI
 openai = OpenAI()
 
 # Get memories
-memories = client.memory.search(query, user_id=user_id)
-context = "\\n".join([m['content'] for m in memories])
+search_result = client.search(query, user_id=user_id)
+memories = search_result.get('results', [])
+context = "\\n".join([m.get('content', str(m)) for m in memories])
 
 # Add to your prompt
 response = openai.chat.completions.create(
@@ -240,8 +261,9 @@ from anthropic import Anthropic
 
 anthropic = Anthropic()
 
-memories = client.memory.search(query, user_id=user_id)
-context = "\\n".join([m['content'] for m in memories])
+search_result = client.search(query, user_id=user_id)
+memories = search_result.get('results', [])
+context = "\\n".join([m.get('content', str(m)) for m in memories])
 
 response = anthropic.messages.create(
     model="claude-3-sonnet-20240229",
@@ -261,7 +283,7 @@ response = anthropic.messages.create(
 ### Error Handling:
 ```python
 try:
-    client.memory.add(content, user_id=user_id)
+    client.store(content=content, user_id=user_id)
 except Exception as e:
     print(f"Memory storage failed: {e}")
     # Continue without memory - don't break user experience

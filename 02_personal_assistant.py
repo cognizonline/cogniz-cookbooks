@@ -23,7 +23,7 @@ Setup:
     export OPENAI_API_KEY="your_openai_key_here"
 """
 
-from cogniz import CognizClient
+from cogniz import Client
 from openai import OpenAI
 import os
 from datetime import datetime
@@ -48,8 +48,7 @@ class PersonalAssistant:
         openai_api_key: Optional[str] = None
     ):
         self.user_id = user_id
-        self.cogniz = CognizClient(
-            api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY")
+        self.cogniz = Client(api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY", project_id="default")
         )
         self.openai = OpenAI(
             api_key=openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -65,7 +64,7 @@ class PersonalAssistant:
 
         # Retrieve relevant memories
         print(" Searching memory...")
-        memories = self.cogniz.memory.search(
+        memories = self.cogniz.search(
             query=message,
             user_id=self.user_id,
             limit=5
@@ -130,10 +129,10 @@ class PersonalAssistant:
 
         # Store user message if it contains useful info
         if is_preference or len(message.split()) > 5:
-            self.cogniz.memory.add(
+            self.cogniz.store(
                 content=message,
                 user_id=self.user_id,
-                tags=["conversation", "preference" if is_preference else "general"]
+                metadata={"tags": ["conversation", "preference" if is_preference else "general"]}
             )
 
 
@@ -294,18 +293,18 @@ if __name__ == "__main__":
 ### 1. Task Management
 ```python
 def add_task(self, task: str, due_date: str):
-    self.cogniz.memory.add(
+    self.cogniz.store(
         content=f"Task: {task} (due: {due_date})",
         user_id=self.user_id,
-        tags=["task", "todo"],
+        metadata={"tags": ["task", "todo"]},
         metadata={"due_date": due_date, "status": "pending"}
     )
 
 def get_tasks(self):
-    return self.cogniz.memory.search(
+    return self.cogniz.search(
         query="tasks",
         user_id=self.user_id,
-        tags=["task"]
+        metadata={"tags": ["task"]}
     )
 ```
 
@@ -320,10 +319,10 @@ def sync_calendar(self):
 
     # Store in memory
     for event in events['items']:
-        self.cogniz.memory.add(
+        self.cogniz.store(
             content=f"Calendar: {event['summary']} at {event['start']}",
             user_id=self.user_id,
-            tags=["calendar", "schedule"]
+            metadata={"tags": ["calendar", "schedule"]}
         )
 ```
 
@@ -333,10 +332,10 @@ from datetime import datetime, timedelta
 
 def check_reminders(self):
     # Get upcoming tasks
-    memories = self.cogniz.memory.search(
+    memories = self.cogniz.search(
         query="upcoming tasks",
         user_id=self.user_id,
-        tags=["task"]
+        metadata={"tags": ["task"]}
     )
 
     # Check due dates
@@ -349,7 +348,7 @@ def check_reminders(self):
 ### 4. Learning User Patterns
 ```python
 def analyze_patterns(self):
-    memories = self.cogniz.memory.get_all(user_id=self.user_id)
+    memories = self.cogniz.get_all(user_id=self.user_id)
 
     # Analyze time patterns
     morning_tasks = [m for m in memories if "morning" in m['content']]
@@ -367,15 +366,15 @@ def analyze_patterns(self):
 ```python
 # Store device-specific preferences
 def store_device_context(self, device_type: str):
-    self.cogniz.memory.add(
+    self.cogniz.store(
         content=f"User active on {device_type}",
         user_id=self.user_id,
-        tags=["device", device_type],
+        metadata={"tags": ["device", device_type]},
         metadata={"timestamp": datetime.now().isoformat()}
     )
 
 # Retrieve works across all devices
-memories = self.cogniz.memory.search(
+memories = self.cogniz.search(
     query=query,
     user_id=self.user_id
     # Automatically includes context from phone, laptop, tablet
@@ -410,7 +409,7 @@ def voice_chat(self):
 ### User Data Export
 ```python
 def export_my_data(self):
-    memories = self.cogniz.memory.get_all(user_id=self.user_id)
+    memories = self.cogniz.get_all(user_id=self.user_id)
 
     # Export to JSON
     with open(f"my_data_{self.user_id}.json", "w") as f:
@@ -422,14 +421,14 @@ def export_my_data(self):
 ### Data Deletion
 ```python
 def delete_my_data(self):
-    self.cogniz.memory.delete_all(user_id=self.user_id)
+    self.cogniz.delete_all(user_id=self.user_id)
     print("All personal data deleted")
 ```
 
 ### Memory Categories
 ```python
 def organize_memories(self):
-    memories = self.cogniz.memory.get_all(user_id=self.user_id)
+    memories = self.cogniz.get_all(user_id=self.user_id)
 
     categories = {
         "preferences": [],

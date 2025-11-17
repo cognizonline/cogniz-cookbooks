@@ -23,7 +23,7 @@ Setup:
     export OPENAI_API_KEY="your_openai_key_here"
 """
 
-from cogniz import CognizClient
+from cogniz import Client
 from openai import OpenAI
 import os
 from datetime import datetime
@@ -48,8 +48,7 @@ class CustomerSupportAgent:
         openai_api_key: Optional[str] = None
     ):
         # Initialize clients
-        self.cogniz = CognizClient(
-            api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY")
+        self.cogniz = Client(api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY", project_id="default")
         )
         self.openai = OpenAI(
             api_key=openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -71,7 +70,7 @@ class CustomerSupportAgent:
 
         # Step 1: Retrieve customer history from memory
         print(" Retrieving customer history...")
-        customer_history = self.cogniz.memory.search(
+        customer_history = self.cogniz.search(
             query=query,
             user_id=customer_id,
             limit=5
@@ -178,10 +177,10 @@ class CustomerSupportAgent:
         # Store in memory
         memory_content = f"Customer query: {query}"
 
-        self.cogniz.memory.add(
+        self.cogniz.store(
             content=memory_content,
             user_id=customer_id,
-            tags=[category, sentiment, "support"],
+            metadata={"tags": [category, sentiment, "support"]},
             metadata={
                 "ticket_id": ticket_id,
                 "timestamp": datetime.now().isoformat(),
@@ -228,7 +227,7 @@ class CustomerSupportAgent:
         """
         Generate summary of customer interactions.
         """
-        memories = self.cogniz.memory.get_all(user_id=customer_id)
+        memories = self.cogniz.get_all(user_id=customer_id)
 
         # Analyze patterns
         categories = {}
@@ -396,15 +395,15 @@ if sentiment == "negative" and interaction_count > 2:
 ### 2. Multi-Channel Support
 ```python
 # Store interactions from all channels
-client.memory.add(
+client.store(
     content=message,
     user_id=customer_id,
-    tags=["support", channel],  # "email", "chat", "phone"
+    metadata={"tags": ["support", channel]},  # "email", "chat", "phone"
     metadata={"channel": channel}
 )
 
 # Retrieve across all channels
-memories = client.memory.search(
+memories = client.search(
     query=query,
     user_id=customer_id
     # Automatically includes email, chat, phone history
@@ -418,10 +417,10 @@ memories = client.memory.search(
 @app.post("/zendesk/webhook")
 async def zendesk_webhook(ticket: dict):
     # Store ticket in Cogniz memory
-    client.memory.add(
+    client.store(
         content=ticket['description'],
         user_id=ticket['requester_id'],
-        tags=["zendesk", "support"],
+        metadata={"tags": ["zendesk", "support"]},
         metadata={"ticket_id": ticket['id']}
     )
 ```
@@ -433,7 +432,7 @@ from intercom_client import Client as IntercomClient
 intercom = IntercomClient()
 
 # Get user conversation history from Cogniz
-memories = client.memory.search(
+memories = client.search(
     query=message,
     user_id=intercom_user_id
 )
@@ -448,7 +447,7 @@ intercom.notes.create(
 ### 4. Analytics Dashboard
 ```python
 def generate_support_metrics():
-    all_memories = client.memory.get_all()
+    all_memories = client.get_all()
 
     metrics = {
         "total_tickets": len(all_memories),
@@ -463,10 +462,10 @@ def generate_support_metrics():
 ### 5. Multilingual Support
 ```python
 # Detect customer language from profile
-customer_profile = client.memory.search(
+customer_profile = client.search(
     query="language preference",
     user_id=customer_id,
-    tags=["profile"]
+    metadata={"tags": ["profile"]}
 )
 
 # Auto-translate if needed
@@ -477,7 +476,7 @@ if customer_language != "en":
 ### 6. Proactive Support
 ```python
 # Detect patterns in customer issues
-memories = client.memory.search(
+memories = client.search(
     query="login issue",
     user_id=customer_id
 )
