@@ -240,7 +240,7 @@ def demo_streaming():
     chat = CognizOpenAI()
 
     # Store some context
-    chat.cogniz.memory.add(
+    chat.cogniz.store(
         content="User loves Python programming and FastAPI",
         user_id="user_002",
         metadata={"tags": ["preference"]}

@@ -183,8 +183,8 @@ class CustomerSupportAgent:
         self.cogniz.store(
             content=memory_content,
             user_id=customer_id,
-            metadata={"tags": [category, sentiment, "support"]},
             metadata={
+                "tags": [category, sentiment, "support"],
                 "ticket_id": ticket_id,
                 "timestamp": datetime.now().isoformat(),
                 "category": category,
@@ -230,7 +230,8 @@ class CustomerSupportAgent:
         """
         Generate summary of customer interactions.
         """
-        memories = self.cogniz.get_all(user_id=customer_id)
+        result = self.cogniz.get_all(user_id=customer_id)
+        memories = result.get('memories', [])
 
         # Analyze patterns
         categories = {}

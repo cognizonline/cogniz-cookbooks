@@ -60,7 +60,7 @@ class TravelAssistant:
         Plan a trip with personalized recommendations.
         """
         print(f"\n{'='*60}")
-        print(f"️  Planning trip to {destination} for {duration}")
+        print(f"Planning trip to {destination} for {duration}")
         print(f"{'='*60}\n")
 
         # Retrieve travel preferences
@@ -78,7 +78,6 @@ class TravelAssistant:
         trips_result = self.cogniz.search(
             query=f"visited {destination} past trips",
             user_id=self.user_id,
-            metadata={"tags": ["trip"]},
             limit=5
         )
         past_trips = trips_result.get('results', [])
@@ -86,7 +85,7 @@ class TravelAssistant:
         print(f" Found {len(past_trips)} past trips for context")
 
         # Generate itinerary
-        print("️  Generating personalized itinerary...")
+        print("Generating personalized itinerary...")
         itinerary = self._generate_itinerary(
             destination, duration, preferences, past_trips
         )
@@ -220,8 +219,11 @@ class TravelAssistant:
         self.cogniz.store(
             content=f"Planned {duration} trip to {destination}",
             user_id=self.user_id,
-            metadata={"tags": ["trip", "planned", destination.lower()]},
-            metadata={"destination": destination, "duration": duration}
+            metadata={
+                "tags": ["trip", "planned", destination.lower()],
+                "destination": destination,
+                "duration": duration
+            }
         )
 
 
@@ -329,7 +331,7 @@ def demo_complete_workflow():
 def main():
     """Run all demos"""
     print("\n" + "="*80)
-    print("️  TRAVEL ASSISTANT DEMO")
+    print("TRAVEL ASSISTANT DEMO")
     print("="*80)
 
     demo_first_time_traveler()
