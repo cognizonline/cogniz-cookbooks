@@ -32,6 +32,9 @@ config.ini
 # Test files
 test_*.py
 *_test.py
+*TEST*.md
+*_RESULTS.md
+*_REPORT.md
 
 # Temporary files
 *.log

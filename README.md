@@ -68,14 +68,16 @@ client.store(
 )
 
 # Retrieve relevant memories
-memories = client.search(
+search_result = client.search(
     query="What are the user's preferences?",
     user_id="user_123"
 )
+memories = search_result.get('results', [])
 
 # Use in your application
 for memory in memories:
-    print(memory['content'])
+    content = memory.get('content', str(memory))
+    print(content)
 ```
 
 ## Running a Cookbook
@@ -101,16 +103,18 @@ response = assistant.chat("Hello!")
 
 ```python
 # 1. Retrieve relevant context
-memories = client.search(query, user_id=user_id)
+search_result = client.search(query, user_id=user_id)
+memories = search_result.get('results', [])
 
 # 2. Enhance LLM prompt with context
-context = "\n".join([m['content'] for m in memories])
+context = "\n".join([m.get('content', '') for m in memories])
 response = llm.generate(f"Context: {context}\n\nUser: {query}")
 
 # 3. Store new interaction
 client.store(
     content=f"User asked about {topic}",
-    user_id=user_id
+    user_id=user_id,
+    metadata={"tags": ["conversation"]}
 )
 ```
 
@@ -125,10 +129,11 @@ client.store(
 )
 
 # Agent 2 retrieves and uses
-memories = client.search(
+search_result = client.search(
     query="topic X research",
     user_id="project_123"
 )
+memories = search_result.get('results', [])
 ```
 
 ### Pattern 3: Memory-Enhanced RAG
@@ -136,7 +141,8 @@ memories = client.search(
 ```python
 # Combine traditional RAG with user memory
 rag_results = vector_db.search(query)
-memory_context = client.search(query, user_id=user_id)
+search_result = client.search(query, user_id=user_id)
+memory_context = search_result.get('results', [])
 combined_context = rag_results + memory_context
 ```
 
@@ -207,8 +213,9 @@ client = Client(api_key="your_key", project_id="default")
 
 @app.post("/chat")
 async def chat(message: str, user_id: str):
-    memories = client.search(message, user_id=user_id)
-    # Process with your LLM
+    search_result = client.search(message, user_id=user_id)
+    memories = search_result.get('results', [])
+    # Process with your LLM using memories
     return {"response": response}
 ```
 
@@ -233,7 +240,8 @@ client = Client(api_key=st.secrets["COGNIZ_API_KEY"], project_id="default")
 
 user_input = st.text_input("Message:")
 if user_input:
-    memories = client.search(user_input, user_id=st.session_state.user_id)
+    search_result = client.search(user_input, user_id=st.session_state.user_id)
+    memories = search_result.get('results', [])
     # Display context-aware response
 ```
 
