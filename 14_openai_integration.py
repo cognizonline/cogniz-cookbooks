@@ -42,7 +42,9 @@ class CognizOpenAI:
         cogniz_api_key: Optional[str] = None,
         openai_api_key: Optional[str] = None
     ):
-        self.cogniz = Client(api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY", project_id="default")
+        self.cogniz = Client(
+            api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY"),
+            project_id="default"
         )
         self.openai = OpenAI(
             api_key=openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -65,11 +67,12 @@ class CognizOpenAI:
         4. Store conversation
         """
         # Step 1: Retrieve memories
-        memories = self.cogniz.search(
+        search_result = self.cogniz.search(
             query=message,
             user_id=user_id,
             limit=5
         )
+        memories = search_result.get('results', [])
 
         # Step 2: Build context
         context = self._build_context(memories, system_prompt)
@@ -108,11 +111,12 @@ class CognizOpenAI:
         Yields chunks of response as they arrive.
         """
         # Retrieve memories
-        memories = self.cogniz.search(
+        search_result = self.cogniz.search(
             query=message,
             user_id=user_id,
             limit=5
         )
+        memories = search_result.get('results', [])
 
         # Build context
         context = self._build_context(memories, system_prompt)
@@ -157,11 +161,12 @@ class CognizOpenAI:
         Example use: Memory as a function tool.
         """
         # Retrieve memories
-        memories = self.cogniz.search(
+        search_result = self.cogniz.search(
             query=message,
             user_id=user_id,
             limit=5
         )
+        memories = search_result.get('results', [])
 
         context = self._build_context(memories)
 
@@ -446,11 +451,12 @@ def prune_old_memories(self, user_id: str, keep_recent: int = 50):
 def multi_turn_chat(self, messages: List[Dict], user_id: str):
     # Get memory context
     last_message = messages[-1]['content']
-    memories = self.cogniz.search(
+    search_result = self.cogniz.search(
         query=last_message,
         user_id=user_id,
         limit=5
     )
+    memories = search_result.get('results', [])
 
     # Build conversation history with memory
     system_context = self._build_context(memories)
@@ -505,9 +511,10 @@ if response.choices[0].function_call:
     func_args = json.loads(response.choices[0].function_call.arguments)
 
     if func_name == "cogniz_store":
-        cogniz.memory.add(func_args['information'], user_id=user_id)
+        cogniz.store(content=func_args['information'], user_id=user_id)
     elif func_name == "cogniz_search":
-        results = cogniz.memory.search(func_args['query'], user_id=user_id)
+        search_result = cogniz.search(query=func_args['query'], user_id=user_id)
+        results = search_result.get('results', [])
 ```
 
 ### 5. Cost Optimization
@@ -543,18 +550,20 @@ from datetime import datetime, timedelta
 @lru_cache(maxsize=1000)
 def cached_memory_search(query: str, user_id: str):
     # Cache memory searches for 5 minutes
-    return self.cogniz.search(
+    search_result = self.cogniz.search(
         query=query,
         user_id=user_id
     )
+    return search_result.get('results', [])
 
 def rate_limited_chat(self, message: str, user_id: str):
     # Check rate limit in memory
-    recent_calls = self.cogniz.search(
+    search_result = self.cogniz.search(
         query="api_call",
         user_id=user_id,
         metadata={"tags": ["rate_limit"]}
     )
+    recent_calls = search_result.get('results', [])
 
     if len(recent_calls) > 10:
         return "Rate limit exceeded. Please wait."

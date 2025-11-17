@@ -47,7 +47,9 @@ class TravelAssistant:
         openai_api_key: Optional[str] = None
     ):
         self.user_id = user_id
-        self.cogniz = Client(api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY", project_id="default")
+        self.cogniz = Client(
+            api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY"),
+            project_id="default"
         )
         self.openai = OpenAI(
             api_key=openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -63,21 +65,23 @@ class TravelAssistant:
 
         # Retrieve travel preferences
         print(" Retrieving your travel profile...")
-        preferences = self.cogniz.search(
+        pref_result = self.cogniz.search(
             query="travel preferences accommodation budget activities",
             user_id=self.user_id,
             limit=10
         )
+        preferences = pref_result.get('results', [])
 
         print(f" Found {len(preferences)} preferences")
 
         # Get past trips for context
-        past_trips = self.cogniz.search(
+        trips_result = self.cogniz.search(
             query=f"visited {destination} past trips",
             user_id=self.user_id,
             metadata={"tags": ["trip"]},
             limit=5
         )
+        past_trips = trips_result.get('results', [])
 
         print(f" Found {len(past_trips)} past trips for context")
 
@@ -123,11 +127,12 @@ class TravelAssistant:
         print(f" Searching recommendations for: {query}")
 
         # Get user preferences
-        preferences = self.cogniz.search(
+        search_result = self.cogniz.search(
             query=query,
             user_id=self.user_id,
             limit=5
         )
+        preferences = search_result.get('results', [])
 
         # Generate recommendations
         recommendations = self._generate_recommendations(query, preferences)
@@ -365,10 +370,11 @@ if __name__ == "__main__":
 ```python
 def search_flights(self, origin: str, destination: str, dates: str):
     # Get user preferences
-    prefs = self.cogniz.search(
+    search_result = self.cogniz.search(
         query="flight preferences airline class",
         user_id=self.user_id
     )
+    prefs = search_result.get('results', [])
 
     # Search flights with preferences
     results = flight_api.search(
@@ -392,13 +398,14 @@ def track_budget(self, trip_id: str, expense: dict):
     )
 
 def get_trip_expenses(self, trip_id: str):
-    expenses = self.cogniz.search(
+    search_result = self.cogniz.search(
         query="expenses",
         user_id=self.user_id,
         metadata={"tags": [trip_id]}
     )
+    expenses = search_result.get('results', [])
 
-    total = sum(float(e['metadata']['amount']) for e in expenses)
+    total = sum(float(e.get('metadata', {}).get('amount', 0)) for e in expenses)
     return {"expenses": expenses, "total": total}
 ```
 
@@ -408,10 +415,11 @@ def plan_group_trip(self, destination: str, traveler_ids: List[str]):
     # Get preferences for all travelers
     all_preferences = []
     for traveler_id in traveler_ids:
-        prefs = self.cogniz.search(
+        search_result = self.cogniz.search(
             query="travel preferences",
             user_id=traveler_id
         )
+        prefs = search_result.get('results', [])
         all_preferences.extend(prefs)
 
     # Find common interests
@@ -425,10 +433,11 @@ def plan_group_trip(self, destination: str, traveler_ids: List[str]):
 ```python
 def get_travel_alerts(self, destination: str):
     # Check memory for past issues
-    past_issues = self.cogniz.search(
+    search_result = self.cogniz.search(
         query=f"{destination} problems issues weather",
         user_id=self.user_id
     )
+    past_issues = search_result.get('results', [])
 
     # Get real-time alerts
     alerts = travel_alert_api.get(destination)
@@ -460,13 +469,14 @@ def store_trip_photos(self, trip_id: str, photos: List[str]):
 ```python
 def get_local_tips(self, destination: str):
     # Check if user has been there
-    past_visit = self.cogniz.search(
+    search_result = self.cogniz.search(
         query=f"visited {destination}",
         user_id=self.user_id
     )
+    past_visit = search_result.get('results', [])
 
     if past_visit:
-        return f"You've been to {destination} before! Your notes: {past_visit[0]['content']}"
+        return f"You've been to {destination} before! Your notes: {past_visit[0].get('content', 'N/A')}"
     else:
         # Get recommendations from other users who match profile
         similar_travelers = find_similar_travelers(self.user_id)
@@ -480,10 +490,11 @@ def get_local_tips(self, destination: str):
 ```python
 def search_accommodations(self, destination: str, dates: str):
     # Get accommodation preferences
-    prefs = self.cogniz.search(
+    search_result = self.cogniz.search(
         query="accommodation hotel hostel airbnb preferences",
         user_id=self.user_id
     )
+    prefs = search_result.get('results', [])
 
     budget_range = extract_budget(prefs)
 

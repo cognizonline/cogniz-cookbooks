@@ -48,7 +48,9 @@ class CustomerSupportAgent:
         openai_api_key: Optional[str] = None
     ):
         # Initialize clients
-        self.cogniz = Client(api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY", project_id="default")
+        self.cogniz = Client(
+            api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY"),
+            project_id="default"
         )
         self.openai = OpenAI(
             api_key=openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -70,11 +72,12 @@ class CustomerSupportAgent:
 
         # Step 1: Retrieve customer history from memory
         print(" Retrieving customer history...")
-        customer_history = self.cogniz.search(
+        search_result = self.cogniz.search(
             query=query,
             user_id=customer_id,
             limit=5
         )
+        customer_history = search_result.get('results', [])
 
         print(f" Found {len(customer_history)} relevant past interactions")
         print()
@@ -403,11 +406,12 @@ client.store(
 )
 
 # Retrieve across all channels
-memories = client.search(
+search_result = client.search(
     query=query,
     user_id=customer_id
     # Automatically includes email, chat, phone history
 )
+memories = search_result.get('results', [])
 ```
 
 ### 3. Integration with Support Platforms
@@ -432,10 +436,11 @@ from intercom_client import Client as IntercomClient
 intercom = IntercomClient()
 
 # Get user conversation history from Cogniz
-memories = client.search(
+search_result = client.search(
     query=message,
     user_id=intercom_user_id
 )
+memories = search_result.get('results', [])
 
 # Add to Intercom note
 intercom.notes.create(
@@ -462,11 +467,12 @@ def generate_support_metrics():
 ### 5. Multilingual Support
 ```python
 # Detect customer language from profile
-customer_profile = client.search(
+search_result = client.search(
     query="language preference",
     user_id=customer_id,
     metadata={"tags": ["profile"]}
 )
+customer_profile = search_result.get('results', [])
 
 # Auto-translate if needed
 if customer_language != "en":
@@ -476,10 +482,11 @@ if customer_language != "en":
 ### 6. Proactive Support
 ```python
 # Detect patterns in customer issues
-memories = client.search(
+search_result = client.search(
     query="login issue",
     user_id=customer_id
 )
+memories = search_result.get('results', [])
 
 if len(memories) >= 3:
     # Customer has contacted 3+ times about login

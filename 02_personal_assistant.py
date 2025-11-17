@@ -48,7 +48,9 @@ class PersonalAssistant:
         openai_api_key: Optional[str] = None
     ):
         self.user_id = user_id
-        self.cogniz = Client(api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY", project_id="default")
+        self.cogniz = Client(
+            api_key=cogniz_api_key or os.getenv("COGNIZ_API_KEY"),
+            project_id="default"
         )
         self.openai = OpenAI(
             api_key=openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -64,11 +66,14 @@ class PersonalAssistant:
 
         # Retrieve relevant memories
         print(" Searching memory...")
-        memories = self.cogniz.search(
+        search_result = self.cogniz.search(
             query=message,
             user_id=self.user_id,
             limit=5
         )
+
+        # Extract results from search response
+        memories = search_result.get('results', [])
 
         print(f" Found {len(memories)} relevant memories")
 
@@ -93,7 +98,8 @@ class PersonalAssistant:
 
         context = "Previous context about user:\n"
         for mem in memories[:3]:
-            context += f"- {mem['content']}\n"
+            content = mem.get('content', str(mem))
+            context += f"- {content}\n"
 
         return context
 
@@ -301,11 +307,12 @@ def add_task(self, task: str, due_date: str):
     )
 
 def get_tasks(self):
-    return self.cogniz.search(
+    search_result = self.cogniz.search(
         query="tasks",
         user_id=self.user_id,
         metadata={"tags": ["task"]}
     )
+    return search_result.get('results', [])
 ```
 
 ### 2. Calendar Integration
@@ -332,15 +339,16 @@ from datetime import datetime, timedelta
 
 def check_reminders(self):
     # Get upcoming tasks
-    memories = self.cogniz.search(
+    search_result = self.cogniz.search(
         query="upcoming tasks",
         user_id=self.user_id,
         metadata={"tags": ["task"]}
     )
+    memories = search_result.get('results', [])
 
     # Check due dates
     for mem in memories:
-        due_date = mem['metadata'].get('due_date')
+        due_date = mem.get('metadata', {}).get('due_date')
         if due_date and is_due_soon(due_date):
             send_reminder(self.user_id, mem['content'])
 ```
@@ -374,11 +382,12 @@ def store_device_context(self, device_type: str):
     )
 
 # Retrieve works across all devices
-memories = self.cogniz.search(
+search_result = self.cogniz.search(
     query=query,
     user_id=self.user_id
     # Automatically includes context from phone, laptop, tablet
 )
+memories = search_result.get('results', [])
 ```
 
 ### 6. Voice Interface
